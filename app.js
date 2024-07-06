@@ -1,12 +1,13 @@
 //jshint esversion:6
-
-
 const express = require('express')
 const bodyParser = require("body-parser")
 const mongoose = require("mongoose")
 const { title } = require('process')
 const { error } = require('console')
-const encrypt = require('mongoose-encryption')
+
+// const encrypt = require('mongoose-encryption')
+const bcrypt = require('bcrypt')
+const saltRounds = 12
 require('dotenv').config()
 
 mongoose.connect("mongodb://localhost:27017/userDB")
@@ -16,7 +17,7 @@ const userSchema = new mongoose.Schema({
     password:String
 })
 
-userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:['password']})
+// userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:['password']})
 
 const User = new mongoose.model("User",userSchema)
 
@@ -38,25 +39,29 @@ app.get("/",function(req,res){
 })
 
 app.post("/register",function(req,res){
-    const userDetails = new User({
-        username:req.body.username,
-        password:req.body.password
-    })
-    userDetails.save()
-    console.log('Done!')
-    res.render("login")
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        const userDetails = new User({
+            username:req.body.username,
+            password:hash
+        })
+        userDetails.save()
+        console.log('Done!')
+        res.render("login")
+    });
+
 })
 
 app.post("/login",function(req,res){
     User.find({username: req.body.username}).then((data) => {
         if(data[0]){
-            if(data[0].password == req.body.password){
-                res.render("secrets")
-            }
-            else{
-                // console.log("error")
-                res.send("Error")
-            }
+            bcrypt.compare(req.body.password, data[0].password, function(err, result) {
+                if(result == true){
+                    res.render("secrets")
+                }else{
+                    // console.log("error")
+                    res.send("Error")
+                }
+            });
         }else{
             res.send("Error")
         }
