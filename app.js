@@ -2,35 +2,39 @@
 const express = require('express')
 const bodyParser = require("body-parser")
 const mongoose = require("mongoose")
-const { title } = require('process')
-const { error } = require('console')
-
 const session = require('express-session')
 const passport = require('passport')
 const passportLocalMongoose = require('passport-local-mongoose')
-
-
-// const encrypt = require('mongoose-encryption')
-const bcrypt = require('bcrypt')
-const saltRounds = 12
 require('dotenv').config()
+
+// const { title } = require('process')
+// const { error } = require('console')
+// const encrypt = require('mongoose-encryption')
+// const bcrypt = require('bcrypt')
+// const saltRounds = 12
 
 mongoose.connect("mongodb://localhost:27017/userDB")
 
+//creating schema
 const userSchema = new mongoose.Schema({
     username:String,
     password:String,
     secret:String
 })
 
+//passport local mongoose pllugin for db schema
 userSchema.plugin(passportLocalMongoose)
 
 // userSchema.plugin(encrypt,{secret:process.env.SECRET,encryptedFields:['password']})
 
+
+//creating model
 const User = new mongoose.model("User",userSchema)
 
+//using passport
 passport.use(User.createStrategy())
 
+//for cookies
 passport.serializeUser(User.serializeUser())
 passport.deserializeUser(User.deserializeUser())
 
@@ -40,12 +44,15 @@ app.set('view engine','ejs')
 app.use(bodyParser.urlencoded({extended: true}))
 app.use(express.static("public"))
 
+
+//init session
 app.use(session({
     secret: "SecretHere",
     resave: false,
     saveUninitialized: false
 }))
 
+//init session and passport
 app.use(passport.initialize())
 app.use(passport.session())
 
@@ -79,9 +86,13 @@ app.post("/submit",function(req,res){
 })
 
 app.get("/secret",function(req,res){
-    User.find({secret: {$ne:null}}).then((foundUser) => {
-        res.render("secrets",{userswithSecret:foundUser})
-        console.log("done")
+    User.find({secret: {$ne:null}}).then((foundUser,err) => {
+        if(err){
+            console.log(err)
+        }else{
+            res.render("secrets",{userswithSecret:foundUser})
+            console.log("done")
+        }
 })
 })
 
@@ -147,8 +158,6 @@ app.get("/logout",function(req,res){
         }
     })
 })
-
-
 
 app.listen(3000,function(){
     console.log('Server started!')
